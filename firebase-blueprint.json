@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "Order": {
+      "title": "Order",
+      "description": "An order from the digital menu or other platforms",
+      "type": "object",
+      "properties": {
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "totalAmount": { "type": "number" },
+        "platform": {
+          "type": "string",
+          "enum": ["WhatsApp", "iFood", "99Food"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "preparing", "dispatched", "completed", "cancelled"]
+        },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["customerName", "items", "totalAmount", "platform", "status", "createdAt"],
+      "optional": {
+        "customerAddress": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "addressReference": { "type": "string" },
+        "orderNotes": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Real-time orders for the admin panel"
+    }
+  }
+}
