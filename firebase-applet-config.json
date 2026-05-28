@@ -5,5 +5,6 @@
   "authDomain": "peterwebsite-6d39f.firebaseapp.com",
   "storageBucket": "peterwebsite-6d39f.firebasestorage.app",
   "messagingSenderId": "61991950592",
-  "measurementId": "G-374G2LKT3S"
+  "measurementId": "G-374G2LKT3S",
+  "firestoreDatabaseId": "(default)"
 }
