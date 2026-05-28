@@ -1,9 +1,9 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { db, auth } from '@/lib/firebase';
-import { collection, onSnapshot, updateDoc, doc, query, orderBy, setDoc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, updateDoc, doc, query, orderBy, setDoc, getDoc, addDoc } from 'firebase/firestore';
 import { signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { Pizza, LogOut, CheckCircle, Clock, Truck, XCircle, ArrowRight, Home, Settings, Megaphone, Save, ExternalLink } from 'lucide-react';
+import { Pizza, LogOut, CheckCircle, Clock, Truck, XCircle, ArrowRight, Home, Settings, Megaphone, Save, ExternalLink, PlusCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Link from 'next/link';
 
@@ -34,10 +34,10 @@ const STATUS_COLORS = {
 };
 
 const STATUS_LABELS = {
-  pending: 'Pendente',
+  pending: 'Novo',
   preparing: 'Preparando',
-  dispatched: 'Enviado',
-  completed: 'Concluído',
+  dispatched: 'Concluído (Pronto)',
+  completed: 'Finalizado/Entregue',
   cancelled: 'Cancelado',
 };
 
@@ -49,8 +49,40 @@ export default function AdminPage() {
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isMenuSettingsOpen, setIsMenuSettingsOpen] = useState(false);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemDesc, setNewItemDesc] = useState('');
+  const [newItemPriceWpp, setNewItemPriceWpp] = useState('');
+  const [newItemPriceIfood, setNewItemPriceIfood] = useState('');
+  const [newItemCategory, setNewItemCategory] = useState('PIZZAS SALGADAS');
+
+  const addCustomMenuItem = async () => {
+    if (!newItemName || !newItemPriceWpp || !newItemPriceIfood) {
+      alert('Preencha os campos obrigatórios (Nome, Preço WhatsApp, Preço iFood)');
+      return;
+    }
+    try {
+      await addDoc(collection(db, 'custom_menu'), {
+        name: newItemName,
+        description: newItemDesc,
+        priceWhatsapp: parseFloat(newItemPriceWpp),
+        priceIfood: parseFloat(newItemPriceIfood),
+        category: newItemCategory,
+        isNew: true
+      });
+      alert('Item adicionado!');
+      setNewItemName('');
+      setNewItemDesc('');
+      setNewItemPriceWpp('');
+      setNewItemPriceIfood('');
+    } catch (e) {
+      console.log('Error adding item', e);
+      alert('Erro ao adicionar produto');
+    }
+  };
   const [promoText, setPromoText] = useState('');
   const [isSavingPromo, setIsSavingPromo] = useState(false);
+  const [lastPendingCount, setLastPendingCount] = useState<number | null>(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -78,12 +110,25 @@ export default function AdminPage() {
         ...doc.data()
       })) as Order[];
       setOrders(ordersData);
+      
+      // Sound alert for new pending order
+      const currentPendingCount = ordersData.filter(o => o.status === 'pending').length;
+      if (lastPendingCount !== null && currentPendingCount > lastPendingCount) {
+        try {
+          const audio = new Audio('https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3?filename=success-1-6297.mp3');
+          audio.play().catch(e => console.log('Audio play blocked:', e));
+        } catch (e) {
+          console.log(e);
+        }
+      }
+      setLastPendingCount(currentPendingCount);
+
     }, (error) => {
       console.error('Error fetching orders:', error);
     });
     
     return () => unsub();
-  }, [user]);
+  }, [user, lastPendingCount]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,7 +158,7 @@ export default function AdminPage() {
       alert('Promoção atualizada com sucesso!');
     } catch (e) {
       console.error(e);
-      alert('Erro ao salvar promoção.');
+      alert('Erro ao salvar promoção: ' + e.message + '\n\nDica: Se você configurou um novo projeto no Firebase, certifique-se de que o Firestore Database foi criado no seu Firebase Console e que as regras de segurança (Rules) foram copiadas e publicadas.');
     } finally {
       setIsSavingPromo(false);
     }
@@ -128,7 +173,7 @@ export default function AdminPage() {
       await updateDoc(doc(db, 'orders', orderId), { status: newStatus });
     } catch (e) {
       console.error('Failed to update status', e);
-      alert('Erro ao atualizar status.');
+      alert('Erro ao atualizar status: ' + e.message + '\n\nDICA: Verifique suas regras no Firebase Console.');
     }
   };
 
@@ -166,6 +211,13 @@ export default function AdminPage() {
     );
   }
 
+  // Calculate stats
+  const completedOrders = orders.filter(o => o.status === 'completed');
+  const totalPix = completedOrders.filter(o => o.paymentMethod === 'Pix').reduce((acc, curr) => acc + curr.totalAmount, 0);
+  const totalMoney = completedOrders.filter(o => o.paymentMethod === 'Dinheiro').reduce((acc, curr) => acc + curr.totalAmount, 0);
+  const totalCard = completedOrders.filter(o => o.paymentMethod?.includes('Cartão')).reduce((acc, curr) => acc + curr.totalAmount, 0);
+  const totalSales = completedOrders.reduce((acc, curr) => acc + curr.totalAmount, 0);
+
   return (
     <div className="min-h-screen bg-stone-100">
       <header className="bg-white border-b border-stone-200 sticky top-0 z-40">
@@ -175,6 +227,10 @@ export default function AdminPage() {
             <h1 className="text-xl font-display font-bold text-stone-800 tracking-tight">Peter Pizzas Admin</h1>
           </div>
           <div className="flex items-center gap-4">
+            <button onClick={() => setIsMenuSettingsOpen(true)} className="text-sm font-medium text-stone-500 hover:text-orange-600 flex items-center gap-2">
+              <PlusCircle className="w-4 h-4" /> <span className="hidden sm:inline">Cardápio</span>
+            </button>
+            <div className="w-px h-6 bg-stone-200 hidden sm:block"></div>
             <button onClick={() => setIsSettingsOpen(true)} className="text-sm font-medium text-stone-500 hover:text-orange-600 flex items-center gap-2">
               <Megaphone className="w-4 h-4" /> <span className="hidden sm:inline">Promoções</span>
             </button>
@@ -191,7 +247,29 @@ export default function AdminPage() {
         </div>
       </header>
       
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-[1400px] mx-auto px-4 py-8">
+        <div className="bg-white rounded-2xl p-6 mb-8 shadow-sm border border-stone-200">
+          <h2 className="text-lg font-bold text-stone-800 mb-4">Resumo do Dia (Pedidos Finalizados)</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-stone-50 p-4 rounded-xl border border-stone-100">
+               <p className="text-sm text-stone-500 font-medium mb-1">Total</p>
+               <p className="text-2xl font-black text-green-600">R$ {totalSales.toFixed(2)}</p>
+            </div>
+            <div className="bg-stone-50 p-4 rounded-xl border border-stone-100">
+               <p className="text-sm text-stone-500 font-medium mb-1">Pix</p>
+               <p className="text-xl font-bold text-stone-800">R$ {totalPix.toFixed(2)}</p>
+            </div>
+            <div className="bg-stone-50 p-4 rounded-xl border border-stone-100">
+               <p className="text-sm text-stone-500 font-medium mb-1">Cartão</p>
+               <p className="text-xl font-bold text-stone-800">R$ {totalCard.toFixed(2)}</p>
+            </div>
+            <div className="bg-stone-50 p-4 rounded-xl border border-stone-100">
+               <p className="text-sm text-stone-500 font-medium mb-1">Dinheiro</p>
+               <p className="text-xl font-bold text-stone-800">R$ {totalMoney.toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-6 items-start">
           {/* Columns for each status */}
           {(['pending', 'preparing', 'dispatched', 'completed', 'cancelled'] as Order['status'][]).map(status => (
@@ -273,6 +351,62 @@ export default function AdminPage() {
           ))}
         </div>
       </main>
+
+      <AnimatePresence>
+        {isMenuSettingsOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMenuSettingsOpen(false)}
+              className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ y: 50, opacity: 0, scale: 0.95 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 50, opacity: 0, scale: 0.95 }}
+              className="relative bg-white rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl"
+            >
+              <button 
+                onClick={() => setIsMenuSettingsOpen(false)}
+                className="absolute top-4 right-4 text-stone-400 hover:text-stone-600 bg-stone-100 hover:bg-stone-200 p-2 rounded-full transition-colors"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+              
+              <div className="flex items-center gap-3 mb-6">
+                <Pizza className="w-8 h-8 text-orange-500" />
+                <h2 className="text-2xl font-display font-bold text-stone-900">Novo Produto</h2>
+              </div>
+              
+              <div className="flex flex-col gap-3 mb-6">
+                <input type="text" placeholder="Nome do Produto (ex: Pizza Calabresa)" value={newItemName} onChange={e => setNewItemName(e.target.value)} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 font-medium" />
+                <textarea placeholder="Descrição (Opcional)" value={newItemDesc} onChange={e => setNewItemDesc(e.target.value)} rows={2} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 text-sm resize-none" />
+                
+                <div className="flex gap-3">
+                  <input type="number" placeholder="Preço Dir / WhatsApp (ex: 30.90)" value={newItemPriceWpp} onChange={e => setNewItemPriceWpp(e.target.value)} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 font-medium" />
+                  <input type="number" placeholder="Preço iFood (ex: 40.90)" value={newItemPriceIfood} onChange={e => setNewItemPriceIfood(e.target.value)} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200 font-medium" />
+                </div>
+
+                <select value={newItemCategory} onChange={e => setNewItemCategory(e.target.value)} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 outline-none focus:border-orange-500 font-medium">
+                  <option value="PIZZAS SALGADAS">PIZZAS SALGADAS</option>
+                  <option value="PIZZAS DOCES">PIZZAS DOCES</option>
+                  <option value="ESFIHAS & MINI PIZZAS">ESFIHAS & MINI PIZZAS</option>
+                  <option value="BEBIDAS">BEBIDAS</option>
+                </select>
+              </div>
+              
+              <button 
+                onClick={addCustomMenuItem}
+                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2"
+              >
+                <PlusCircle className="w-5 h-5" /> Adicionar Produto
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {isSettingsOpen && (

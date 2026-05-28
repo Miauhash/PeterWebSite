@@ -12,6 +12,7 @@ interface CartItem extends MenuItem {
 
 export default function MenuPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [customItems, setCustomItems] = useState<MenuItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -29,8 +30,16 @@ export default function MenuPage() {
         setPromoText(doc.data().text || '');
       }
     });
-    return () => unsub();
+    
+    const unsubMenu = onSnapshot(collection(db, 'custom_menu'), (snapshot) => {
+      setCustomItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MenuItem)));
+    });
+
+    return () => { unsub(); unsubMenu(); }
   }, []);
+
+  const allItems = [...menuItems, ...customItems];
+  const allCategories = Array.from(new Set([...menuCategories, ...customItems.map(i => i.category)]));
 
   const handlePlatformClick = (platform: 'ifood' | '99food', webUrl: string) => {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -134,104 +143,109 @@ export default function MenuPage() {
       
     } catch (e: any) {
       console.error(e);
-      alert('Erro ao enviar o pedido. Tente novamente.');
+      alert('Erro ao enviar o pedido: ' + e.message + '\n\nDICA: Se for erro de permissão (Missing or insufficient permissions), vá no Firebase Console > Firestore Database > Regras (Rules) e verifique se as regras estão corretas, ou se o banco de dados foi criado.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#FFFDF8] pb-32">
-      <header className="bg-orange-600 text-white shadow-md sticky top-0 z-40">
-        {promoText && (
-          <div className="bg-orange-800 text-amber-100 overflow-hidden relative border-b border-orange-900/50">
-            <div className="flex whitespace-nowrap animate-marquee py-1.5 items-center">
-              <span className="mx-4 text-xs md:text-sm font-bold tracking-widest flex items-center gap-2">
-                <Zap className="w-4 h-4 text-yellow-400" fill="currentColor" />
-                {promoText}
-                <Zap className="w-4 h-4 text-yellow-400" fill="currentColor" />
-              </span>
-              <span className="mx-4 text-xs md:text-sm font-bold tracking-widest flex items-center gap-2" aria-hidden="true">
-                <Zap className="w-4 h-4 text-yellow-400" fill="currentColor" />
-                {promoText}
-                <Zap className="w-4 h-4 text-yellow-400" fill="currentColor" />
-              </span>
+    <div className="min-h-screen pb-32 relative bg-stone-900">
+      <div 
+        className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-20 pointer-events-none"
+        style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=2070&auto=format&fit=crop")' }}
+      ></div>
+      <div className="relative z-10">
+        <header className="bg-orange-600 text-white shadow-md sticky top-0 z-40">
+          <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+               <Pizza className="w-8 h-8 text-yellow-300" />
+               <div>
+                 <h1 className="text-2xl font-display font-bold uppercase tracking-tight">Peter Pizzas</h1>
+                 <p className="text-xs text-orange-200 hidden sm:block">Sua pizza favorita, feita com carinho e qualidade!</p>
+               </div>
             </div>
-            {/* Inline CSS for marquee animation (could also go to globals.css) */}
-            <style jsx>{`
-              @keyframes marquee {
-                0% { transform: translateX(100%); }
-                100% { transform: translateX(-100%); }
-              }
-              .animate-marquee {
-                animation: marquee 25s linear infinite;
-              }
-            `}</style>
+            <a href="/admin" className="text-xs bg-orange-700 hover:bg-orange-800 px-3 py-1.5 rounded-full transition-colors">Admin</a>
           </div>
-        )}
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-             <Pizza className="w-8 h-8 text-yellow-300" />
-             <div>
-               <h1 className="text-2xl font-display font-bold uppercase tracking-tight">Peter Pizzas</h1>
-               <p className="text-xs text-orange-200 hidden sm:block">Sua pizza favorita, feita com carinho e qualidade!</p>
-             </div>
+          <div className="bg-yellow-400 text-yellow-950 text-center py-3 text-sm font-semibold px-4 flex justify-center items-center gap-2">
+            <Phone className="w-5 h-5 flex-shrink-0" /> <span className="text-2xl md:text-3xl font-black tracking-tight drop-shadow-sm">(21) 98048-3120</span> <span className="hidden sm:inline ml-2">| PEDIDO DIRETO NA LOJA</span>
           </div>
-          <a href="/admin" className="text-xs bg-orange-700 hover:bg-orange-800 px-3 py-1.5 rounded-full transition-colors">Admin</a>
-        </div>
-        <div className="bg-yellow-400 text-yellow-950 text-center py-2 text-sm font-semibold px-4 flex justify-center items-center gap-2">
-          <Phone className="w-5 h-5 flex-shrink-0" /> <span className="text-xl md:text-2xl font-black tracking-tight drop-shadow-sm">(21) 98048-3120</span> <span className="hidden sm:inline ml-2">| ECONOMIZE PEDINDO DIRETO COM A GENTE!</span>
-        </div>
-      </header>
-
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white border border-amber-200 rounded-xl p-4 mb-8 shadow-sm flex flex-col md:flex-row items-center justify-center gap-4 text-sm text-stone-700">
-           <button 
-             onClick={() => setIsPlatformModalOpen(true)}
-             className="flex items-center gap-2 hover:bg-orange-50 px-3 py-2 rounded-xl transition-colors border border-transparent hover:border-orange-200 group font-bold text-orange-800"
-           >
-             <div className="w-4 h-4 bg-orange-100 border border-orange-300 rounded"></div> 
-             Plataformas (iFood / 99Food)
-             <ExternalLink className="w-4 h-4 text-orange-400 group-hover:text-orange-600 transition-colors" />
-           </button>
-           <div className="flex items-center gap-2"><div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div> <strong>Pedido Direto (WhatsApp)</strong></div>
-        </div>
-
-        {menuCategories.map(category => (
-          <section key={category} className="mb-12">
-            <div className="flex items-center gap-4 mb-6">
-              <h2 className="text-2xl font-display font-bold text-amber-900 uppercase tracking-widest">{category}</h2>
-              <div className="flex-1 h-px bg-amber-200"></div>
+          {promoText && (
+            <div className="bg-orange-900 text-amber-100 overflow-hidden relative border-b-4 border-orange-800 py-3 shadow-inner">
+              <div className="flex whitespace-nowrap animate-marquee items-center">
+                <span className="mx-4 text-lg md:text-xl font-black tracking-widest flex items-center gap-3 uppercase">
+                  <Zap className="w-6 h-6 text-yellow-400" fill="currentColor" />
+                  {promoText}
+                  <Zap className="w-6 h-6 text-yellow-400" fill="currentColor" />
+                </span>
+                <span className="mx-4 text-lg md:text-xl font-black tracking-widest flex items-center gap-3 uppercase" aria-hidden="true">
+                  <Zap className="w-6 h-6 text-yellow-400" fill="currentColor" />
+                  {promoText}
+                  <Zap className="w-6 h-6 text-yellow-400" fill="currentColor" />
+                </span>
+              </div>
+              <style jsx>{`
+                @keyframes marquee {
+                  0% { transform: translateX(100%); }
+                  100% { transform: translateX(-100%); }
+                }
+                .animate-marquee {
+                  animation: marquee 20s linear infinite;
+                }
+              `}</style>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {menuItems.filter(item => item.category === category).map(item => (
-                <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm border border-stone-100 hover:border-amber-300 transition-colors flex justify-between items-start group">
-                  <div className="flex-1 pr-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-stone-800 text-lg">{item.name}</h3>
-                      {item.isNew && <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">NOVO!</span>}
+          )}
+        </header>
+
+        <main className="max-w-4xl mx-auto px-4 py-8 relative">
+          <div className="bg-white border border-amber-200 rounded-3xl p-5 mb-10 shadow-lg flex flex-col md:flex-row items-center justify-center gap-6 text-sm text-stone-700 backdrop-blur-sm bg-white/95">
+             <button 
+               onClick={() => setIsPlatformModalOpen(true)}
+               className="flex items-center gap-2 hover:bg-orange-50 px-4 py-3 rounded-2xl transition-colors border border-transparent hover:border-orange-200 group font-bold text-orange-800"
+             >
+               <div className="w-4 h-4 bg-orange-100 border border-orange-300 rounded"></div> 
+               Plataformas (iFood / 99Food)
+               <ExternalLink className="w-4 h-4 text-orange-400 group-hover:text-orange-600 transition-colors" />
+             </button>
+             <div className="flex items-center gap-2 px-4 py-3"><div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div> <strong className="text-lg">Pedido Direto (WhatsApp)</strong></div>
+          </div>
+
+          {allCategories.map(category => (
+            <section key={category} className="mb-12">
+              <div className="flex items-center gap-4 mb-8">
+                <h2 className="text-3xl font-display font-black text-white drop-shadow-md uppercase tracking-wider">{category}</h2>
+                <div className="flex-1 h-1 bg-gradient-to-r from-orange-500/50 to-transparent rounded-full"></div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {allItems.filter(item => item.category === category).map(item => (
+                  <div key={item.id} className="bg-white/95 backdrop-blur-sm rounded-3xl p-5 shadow-xl border-2 border-stone-100 hover:border-amber-400 transition-all flex justify-between items-start group hover:-translate-y-1">
+                    <div className="flex-1 pr-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-bold text-stone-900 text-xl">{item.name}</h3>
+                        {item.isNew && <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-sm">NOVO!</span>}
+                      </div>
+                      {item.description && <p className="text-stone-600 font-medium text-sm mb-4 leading-relaxed">{item.description}</p>}
+                      
+                      <div className="flex items-center gap-3 mt-auto">
+                        <span className="text-stone-400 line-through text-sm font-semibold">R$ {item.priceIfood.toFixed(2)}</span>
+                        <span className="text-green-600 font-black text-2xl drop-shadow-sm">R$ {getPrice(item).toFixed(2)}</span>
+                      </div>
                     </div>
-                    {item.description && <p className="text-stone-500 text-sm mb-3 leading-snug">{item.description}</p>}
                     
-                    <div className="flex items-center gap-3 mt-auto">
-                      <span className="text-stone-400 line-through text-sm">R$ {item.priceIfood.toFixed(2)}</span>
-                      <span className="text-green-700 font-bold text-lg">R$ {getPrice(item).toFixed(2)}</span>
-                    </div>
+                    <button 
+                      onClick={() => addToCart(item)}
+                      className="bg-amber-100 hover:bg-amber-300 text-amber-900 rounded-2xl w-12 h-12 flex items-center justify-center transition-all shrink-0 hover:scale-110 shadow-sm border border-amber-200"
+                    >
+                      <Plus className="w-6 h-6 font-bold" />
+                    </button>
                   </div>
-                  
-                  <button 
-                    onClick={() => addToCart(item)}
-                    className="bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-full w-10 h-10 flex items-center justify-center transition-colors shrink-0"
-                  >
-                    <Plus className="w-5 h-5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </section>
-        ))}
-      </main>
+                ))}
+              </div>
+            </section>
+          ))}
+        </main>
+      </div>
 
       <AnimatePresence>
         {cartItemCount > 0 && !isCartOpen && (
