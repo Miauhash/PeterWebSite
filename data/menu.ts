@@ -11,6 +11,7 @@ export interface MenuItem {
 }
 
 export const menuCategories = [
+  'PIZZAS ESPECIAIS',
   'PIZZAS SALGADAS',
   'PIZZAS DOCES',
   'ESFIHAS & MINI PIZZAS',
@@ -18,6 +19,8 @@ export const menuCategories = [
 ];
 
 export const menuItems: MenuItem[] = [
+  { id: 'pe1', category: 'PIZZAS ESPECIAIS', name: 'Frango do Chefe', description: 'Molho, mussarela, frango desfiado, mel a pimentado, oregano', isNew: true, priceIfood: 47.90, priceWhatsapp: 35.60 },
+  { id: 'pe2', category: 'PIZZAS ESPECIAIS', name: 'Hot Honey', description: 'Molho, Mussarela, Provolone, Mel, Pimenta e Orégano', isNew: true, priceIfood: 47.90, priceWhatsapp: 33.60 },
   { id: 'ps1', category: 'PIZZAS SALGADAS', name: 'Bacon', description: 'Para os amantes do crocante! Generosas fatias de bacon dourado sobre mussarela e molho. Simplesmente irresistível.', priceIfood: 45.90, priceWhatsapp: 30.90 },
   { id: 'ps2', category: 'PIZZAS SALGADAS', name: 'Bacon com Alho', description: 'Sabor e aroma que hipnotizam! Bacon crocante e toque marcante do alho torrado, envolvidos em mussarela e molho.', priceIfood: 45.90, priceWhatsapp: 32.90 },
   { id: 'ps3', category: 'PIZZAS SALGADAS', name: 'Bacon com Ovos', description: 'A combinação perfeita para um sabor surpreendente! Bacon crocante e ovos fresquinhos harmonizando com molho e mussarela.', priceIfood: 45.90, priceWhatsapp: 32.90 },

@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { menuItems, menuCategories, MenuItem } from '@/data/menu';
 import { ShoppingCart, Plus, Minus, Phone, Pizza, Store, ExternalLink, X, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -197,7 +198,7 @@ export default function MenuPage() {
           )}
         </header>
 
-        <main className="max-w-4xl mx-auto px-4 py-8 relative">
+        <main className="max-w-7xl mx-auto px-4 py-8 relative">
           <div className="bg-white border border-amber-200 rounded-3xl p-5 mb-10 shadow-lg flex flex-col md:flex-row items-center justify-center gap-6 text-sm text-stone-700 backdrop-blur-sm bg-white/95">
              <button 
                onClick={() => setIsPlatformModalOpen(true)}
@@ -217,28 +218,39 @@ export default function MenuPage() {
                 <div className="flex-1 h-1 bg-gradient-to-r from-orange-500/50 to-transparent rounded-full"></div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {allItems.filter(item => item.category === category).map(item => (
-                  <div key={item.id} className="bg-white/95 backdrop-blur-sm rounded-3xl p-5 shadow-xl border-2 border-stone-100 hover:border-amber-400 transition-all flex justify-between items-start group hover:-translate-y-1">
-                    <div className="flex-1 pr-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-bold text-stone-900 text-xl">{item.name}</h3>
-                        {item.isNew && <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-sm">NOVO!</span>}
-                      </div>
-                      {item.description && <p className="text-stone-600 font-medium text-sm mb-4 leading-relaxed">{item.description}</p>}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {allItems.filter(item => item.category === category).sort((a, b) => a.name.localeCompare(b.name)).map(item => (
+                  <div key={item.id} className="bg-white/95 backdrop-blur-sm rounded-3xl overflow-hidden shadow-xl border-2 border-stone-100 hover:border-amber-400 transition-all flex flex-col group hover:-translate-y-1">
+                    <div className="relative h-48 w-full overflow-hidden bg-stone-200">
+                      <Image 
+                        src={`/image/${item.id}.jpg`} 
+                        alt={item.name}
+                        fill
+                        className="object-cover group-hover:scale-110 transition-transform duration-500" 
+                      />
+                      {item.isNew && (
+                        <span className="absolute top-3 left-3 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full animate-pulse shadow-md z-10">
+                          NOVO!
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-5 flex-1 flex flex-col pt-4">
+                      <h3 className="font-bold text-stone-900 text-xl mb-2 leading-tight">{item.name}</h3>
+                      {item.description && <p className="text-stone-600 font-medium text-sm mb-5 leading-relaxed flex-1">{item.description}</p>}
                       
-                      <div className="flex items-center gap-3 mt-auto">
-                        <span className="text-stone-400 line-through text-sm font-semibold">R$ {item.priceIfood.toFixed(2)}</span>
-                        <span className="text-green-600 font-black text-2xl drop-shadow-sm">R$ {getPrice(item).toFixed(2)}</span>
+                      <div className="flex items-center justify-between mt-auto">
+                        <div className="flex flex-col">
+                          <span className="text-stone-400 line-through text-sm font-semibold">R$ {item.priceIfood.toFixed(2)}</span>
+                          <span className="text-green-600 font-black text-2xl drop-shadow-sm leading-none mt-1">R$ {getPrice(item).toFixed(2)}</span>
+                        </div>
+                        <button 
+                          onClick={() => addToCart(item)}
+                          className="bg-amber-100 hover:bg-amber-300 text-amber-900 rounded-2xl w-12 h-12 flex items-center justify-center transition-all shrink-0 hover:scale-110 shadow-sm border border-amber-200"
+                        >
+                          <Plus className="w-6 h-6 font-bold" />
+                        </button>
                       </div>
                     </div>
-                    
-                    <button 
-                      onClick={() => addToCart(item)}
-                      className="bg-amber-100 hover:bg-amber-300 text-amber-900 rounded-2xl w-12 h-12 flex items-center justify-center transition-all shrink-0 hover:scale-110 shadow-sm border border-amber-200"
-                    >
-                      <Plus className="w-6 h-6 font-bold" />
-                    </button>
                   </div>
                 ))}
               </div>
